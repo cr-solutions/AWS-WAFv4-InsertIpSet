@@ -45,7 +45,7 @@ IP="$1"
 # check for IPv6
 if [[ $var =~ $regex ]]; then
     NAME="$NAME_v6"    
-    ID="ID_v6"
+    ID="$ID_v6"
     BLOCK=128
 fi
 
