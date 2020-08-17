@@ -30,11 +30,19 @@ ID_v6="fd7ed4dd-fe46-4bff-9d20-a67988ca7741"
 if [ -z "$1" ] || [ "$1" == "help" ] ; then
   me=`basename "$0"`
   echo 
-  echo "add an new IP to IP sets"
+  echo "add an new IP to IP sets or remove an existing"
   echo "Sample Call: ./$me <ip>"
+  echo "   or"
+  echo "Sample Call: ./$me <ip> remove"
   echo
   exit
 fi
+
+REMOVE_IP=false
+if [ "$2" == "remove" ] ; then
+   REMOVE_IP=true
+fi
+
 
 TMP="/tmp/ip_set.out"
 BLOCK="32"
@@ -60,10 +68,22 @@ LOCK_TOKEN=$(jq -r '.LockToken' $TMP)
 # Get IP list from the JSON
 arr=( $(jq -r '.IPSet.Addresses[]' $TMP) )
 
-# Add our ip to the list
-arr+=( "${IP}/${BLOCK}" )
+if [ "$REMOVE_IP" = true ]; then
+   # Remove our ip to the list
+   to_del="${IP}/${BLOCK}"
+   arr=( "${arr[@]/$to_del}" )
+   # trim string with xargs
+   ADD=$(echo "${arr[@]}" | xargs)
+else
+   # Add our ip to the list
+   arr+=( "${IP}/${BLOCK}" )
+   ADD="${arr[@]}"
+fi
 
-echo "${arr[@]}"
+echo
+echo "IP Set:"
+echo "$ADD"
+echo 
 
 # Update IP set
-aws wafv2 update-ip-set --name=$NAME --scope=REGIONAL --id=$ID --addresses "${arr[@]}" --lock-token=$LOCK_TOKEN --region=$REGION --description="$DESC"
+aws wafv2 update-ip-set --name=$NAME --scope=REGIONAL --id=$ID --addresses $ADD --lock-token=$LOCK_TOKEN --region=$REGION --description="$DESC"
